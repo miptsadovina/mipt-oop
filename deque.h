@@ -1,22 +1,23 @@
-#pragma once
 #include <iostream>
 #include <vector>
-#include <exception>
+#include <stdexcept>
 
 template <typename T>
 class Deque {
-private: 
-    static const size_t base = 32;//размер блока
-    size_t sizee;//размер deque
-    std::vector <T*> external;//внешний массив указателей
-    size_t beginn;//начало дека
-    size_t endd;//конец дека
-    size_t first;//начало внешнего массива
-    size_t last;//конец внешнего массива
+private:
+    static const size_t base = 32;
+    size_t size_ = 0;
+    std::vector <T*> external;
+    size_t begin_ = 0;//начало дека
+    size_t end_ = 0;//конец дека
+    size_t first = 0;//начало внешнего массива
+    size_t last = 0;//конец внешнего массива
 
     void expandCapacity() {
         if (external.size() == 0) {
             external.resize(1, nullptr);
+            first = 0;
+            last = 0;
         }
         std::vector <T*> newExternal(external.size() * 3, nullptr);
         size_t sizeOfPointers = last - first;
@@ -29,200 +30,173 @@ private:
     }
 
     void addNewArrayBack() {
-        if (last == external.size()) {
+        if (external.size() == 0 || last == external.size()) {
             expandCapacity();
         }
         external[last] = reinterpret_cast <T*> (new uint8_t[base * sizeof(T)]);
         ++last;
-        return;
     }
 
     void addNewArrayFront() {
-        if (first == 0) {
+        if (external.size() == 0 || first == 0) {
             expandCapacity();
         }
+        external[first - 1] = reinterpret_cast <T*> (new uint8_t[base * sizeof(T)]);
         --first;
-        external[first] = reinterpret_cast <T*> (new uint8_t[base * sizeof(T)]);
-        return;
+    }
+
+    void delete_deque() {
+        for(size_t i = first; i < last; ++i) {
+            for(size_t j = 0; j < base; ++j) {
+                (external[i] + j)->~T();
+            }
+            delete[] reinterpret_cast<uint8_t*>(external[i]);
+        }
+    }
+
+    void clear() {
+        while(size_) {
+            pop_back();
+        }
     }
 
 public:
-    Deque() {
-        external.resize(3, nullptr);
-        sizee = 0;
-        beginn = 0;
-        endd = 0;
-        first = 1;
-        last = 1;
-    }
+    Deque() = default;
 
     Deque(const Deque<T>& deq) {
-        sizee = 0;
-        beginn = 0;
-        endd = 0;
-        first = 0;
-        last = 0;
-        for (size_t i = 0; i < deq.sizee; ++i) {
-            push_back(deq[i]);
+        try {
+            for (size_t i = 0; i < deq.size_; ++i) {
+                push_back(deq[i]);
+            }
+        } catch (...) {
+            clear();
         }
     }
 
     Deque(int num) {
-        sizee = 0;
-        beginn = 0;
-        endd = 0;
-        first = 0;
-        last = 0;
         T emptyElem;
-        for (int i = 0; i < num; ++i) {
-            push_back(emptyElem);
+        try {
+            for (int i = 0; i < num; ++i) {
+                push_back(emptyElem);
+            }
+        } catch (...) {
+            clear();
         }
     }
 
     Deque(int num, const T& d) {
-        sizee = 0;
-        beginn = 0;
-        endd = 0;
-        first = 0;
-        last = 0;
-        for (int i = 0; i < num; ++i) {
-            push_back(d);
+        try {
+            for (int i = 0; i < num; ++i) {
+                push_back(d);
+            }
+        } catch (...) {
+            clear();
         }
     }
 
     Deque& operator=(const Deque<T>& deq) {
-        for (size_t i = 0; i < external.size(); ++i) {
-            external[i] = nullptr;
-        }
-        sizee = 0;
-        beginn = 0;
-        endd = 0;
-        first = 0;
-        last = 0;
-        for (size_t i = 0; i < deq.sizee; ++i) {
-            push_back(deq[i]);
+        delete_deque();
+        try {
+            for (size_t i = 0; i < deq.size_; ++i) {
+                push_back(deq[i]);
+            }
+        } catch (...) {
+            clear();
         }
         return *this;
     }
 
     size_t size() const {
-        return sizee;
+        return size_;
     }
 
     T& operator[](size_t index) {
-        return *(external[(beginn + index) / base + first] + (beginn + index) % base);
+        return *(external[(begin_ + index) / base + first] + (begin_ + index) % base);
     }
 
     const T& operator[](size_t index) const{
-        return *(external[(beginn + index) / base + first] + (beginn + index) % base);
+        return *(external[(begin_ + index) / base + first] + (begin_ + index) % base);
     }
 
     T& at(size_t pos) {
-        if (pos >= sizee) {
+        if (pos >= size_) {
             throw std::out_of_range("out of range");
         }
-        return *(external[(beginn + pos) / base + first] + (beginn + pos) % base);
+        return *(external[(begin_ + pos) / base + first] + (begin_ + pos) % base);
     }
 
     const T& at(size_t pos) const {
-        if (pos >= sizee) {
+        if (pos >= size_) {
             throw std::out_of_range("out of range");
         }
-        return *(external[(beginn + pos) / base + first] + (beginn + pos) % base);
+        return *(external[(begin_ + pos) / base + first] + (begin_ + pos) % base);
     }
 
     void push_back(const T& val) {
-        if (sizee == 0) {
-            if (external.size() == 0) {
-                external.resize(3, nullptr);
-            }
-            external[2 * (external.size() / 3)] = reinterpret_cast <T*> (new uint8_t[base * sizeof(T)]);
-            beginn = 0;
-            endd = 1;
-            first = 2 * (external.size() / 3);
-            last = first + 1;
-            new(external[last - 1] + endd - 1) T(val);
-            ++sizee;
-        } else if (endd < base) {
-            new(external[last - 1] + endd) T(val);
-            ++endd;
-            ++sizee;
+        if (size_ && end_ < base) {
+            ++end_;
         } else {
             addNewArrayBack();
-            endd = 1;
-            new(external[last - 1] + endd - 1) T(val);
-            ++sizee;
+            end_ = 1;
         }
-        return;
+        try {
+            ++size_;
+            new(external[last - 1] + end_ - 1) T(val);
+        } catch(...) {
+            pop_back();
+            throw;
+        }
     }
 
     void pop_back() {
-        --sizee;
-        if (sizee == 0) {
-            delete[] external[first];
+        --size_;
+        if (size_ == 0) {
             external[first] = nullptr;
-            sizee = 0;
-            beginn = 0;
-            endd = 0;
-            first = 0;
-            last = 0;
+            external.clear();
         } else {
-            if (endd == 1) {
-                endd = base;
+            if (end_ == 1) {
+                end_ = base;
                 --last;
                 delete[] external[last];
                 external[last] = nullptr;
             } else {
-                --endd;
+                --end_;
             }
         }
     }
 
     void push_front(const T& val) {
-        if (sizee == 0) {
-            if (external.size() == 0) {
-                external.resize(3, nullptr);
-            }
-            external[2 * (external.size() / 3)] = reinterpret_cast <T*> (new uint8_t[base * sizeof(T)]);
-            beginn = 0;
-            endd = 1;
-            first = 2 * (external.size() / 3);
-            last = first + 1;
-            new(external[last - 1] + endd - 1) T(val);
-            ++sizee;
-            std::cerr << first << "\n";
-            std::cerr << external.size() <<"\n";
-        } else if (beginn > 0) {
-            --beginn;
-            new(external[first] + beginn) T(val);
-            ++sizee;
+        if (size_ && begin_ > 0) {
+            --begin_;
         } else {
             addNewArrayFront();
-            beginn = base - 1;
-            new(external[first] + beginn) T(val);
-            ++sizee;
+            begin_ = base - 1;
+            if (end_ == 0) {
+                end_ = 32;
+            }
         }
-        return;
+        try {
+            ++size_;
+            new(external[first] + begin_) T(val);
+        } catch(...) {
+            pop_front();
+            throw;
+        }
     }
 
     void pop_front() {
-        --sizee;
-        if (sizee == 0) {
-            delete[] external[first];
+        --size_;
+        if (size_ == 0) {
             external[first] = nullptr;
-            sizee = 0;
-            beginn = 0;
-            endd = 0;
-            first = 0;
-            last = 0;
+            external.clear();
         } else {
-            if (beginn == base - 1) {
-                beginn = 0;
+            if (begin_ == base - 1) {
+                begin_ = 0;
                 ++first;
                 delete[] external[first - 1];
                 external[first - 1] = nullptr;
             } else {
-                ++beginn;
+                ++begin_;
             }
         }
     }
@@ -233,39 +207,36 @@ public:
     public:
 
         size_t pos;
-        T** pointerr = nullptr;
+        T** pointer_ = nullptr;
 
         typedef std::conditional_t<isconst, const T, T> value_type;
         typedef std::conditional_t<isconst, const T*, T*> pointer;
         typedef std::conditional_t<isconst, const T&, T&> reference;
-        typedef int difference_type;
-        typedef std::random_access_iterator_tag iterator_category;
-        
+
         Iterator() = default;
 
         Iterator(T** other, size_t num) {
-            pointerr = other;
+            pointer_ = other;
             pos = num;
         }
 
         Iterator(const Iterator<false>& other) {
-            pointerr = other.pointerr;
+            pointer_ = other.pointer_;
             pos = other.pos;
         }
 
         ~Iterator() = default;
 
         Iterator& operator=(const Iterator<false>& other) {
-            pointerr = other.pointerr;
+            pointer_ = other.pointer_;
             pos = other.pos;
-            return *this;
         }
 
         Iterator& operator++(){
             if (pos < base - 1) {
                 ++pos;
             } else {
-                ++pointerr;
+                ++pointer_;
                 pos = 0;
             }
             return *this;
@@ -281,7 +252,7 @@ public:
             if (pos > 0) {
                 --pos;
             } else {
-                --pointerr;
+                --pointer_;
                 pos = base - 1;
             }
             return *this;
@@ -293,25 +264,25 @@ public:
             return copy;
         }
 
-        Iterator operator+(long long num) const {
+        Iterator operator+(int num) const {
             Iterator copy(*this);
             if (num > 0) {
-                copy.pointerr += (this->pos + pointerr) / base;
-                copy.pos += (this->pos + pointerr) % base;
-            } else {
-                copy.pointerr += ((this->pos + pointerr) - base + 1) / base;
-                copy.pos += ((this->pos + pointerr) % base + base) % base;
+                copy.pos = (pos + num) % base;
+                copy.pointer_ += (pos + num) / base;
+            } else if (num < 0) {
+                copy.pos = ((int(pos) + num) % base + base) % base;
+                copy.pointer_ += ((int(pos) + num) - int(base) + 1) / int(base);
             }
             return copy;
         }
 
-        Iterator operator-(long long num) const {
+        Iterator operator-(int num) const {
             Iterator copy(*this);
             return copy + (-num);
         }
 
         bool operator==(const Iterator& other) const {
-            return (pointerr == other.pointerr) && (pos == other.pos);
+            return (pointer_ == other.pointer_) && (pos == other.pos);
         }
 
         bool operator!=(const Iterator& other) const {
@@ -319,7 +290,7 @@ public:
         }
 
         bool operator<(const Iterator& other) const {
-            return (pointerr == other.pointerr ? pos < other.pos : pointerr < other.pointerr);
+            return (pointer_ == other.pointer_ ? pos < other.pos : pointer_ < other.pointer_);
         }
 
         bool operator<=(const Iterator& other) const {
@@ -349,11 +320,11 @@ public:
         }
 
         reference operator*() const {
-            return *(*pointerr + pos);
+            return *(*pointer_ + pos);
         }
 
         pointer operator->() const{
-            return *pointerr + pos;
+            return *pointer_ + pos;
         }
 
     };
@@ -362,27 +333,27 @@ public:
     typedef Iterator<true> const_iterator;
 
     iterator begin(){
-        return iterator(&external[first], beginn);
+        return iterator(&external[first], begin_);
     }
 
     iterator end() {
-        return iterator(&external[last - 1], endd);
+        return iterator(&external[last - 1], end_);
     }
 
     const_iterator begin() const {
-        return const_iterator(const_cast<T**>(&external[first]), beginn);
+        return const_iterator(const_cast<T**>(&external[first]), begin_);
     }
 
     const_iterator end() const {
-        return const_iterator(const_cast<T**>(&external[last - 1]), endd);
+        return const_iterator(const_cast<T**>(&external[last - 1]), end_);
     }
 
     const_iterator cbegin() const {
-        return const_iterator(const_cast<T**>(&external[first]), beginn);
+        return const_iterator(const_cast<T**>(&external[first]), begin_);
     }
 
     const_iterator cend() const {
-        return const_iterator(const_cast<T**>(&external[last - 1]), endd);
+        return const_iterator(const_cast<T**>(&external[last - 1]), end_);
     }
 
     template <bool isconst>
@@ -396,8 +367,6 @@ public:
         typedef std::conditional_t<isconst, const T, T> value_type;
         typedef std::conditional_t<isconst, const T*, T*> pointer;
         typedef std::conditional_t<isconst, const T&, T&> reference;
-        typedef int difference_type;
-        typedef std::random_access_iterator_tag iterator_category;
 
         revIterator() = default;
 
@@ -449,23 +418,20 @@ public:
             return copy;
         }
 
-        revIterator operator+(long long num) const {
-            revIterator copy(*this);
-            if (num > 0) {
-                for (long long i = 0; i < num; ++i) {
-                    ++copy;
-                }
-            } else {
-                for (long long i = 0; i < (-num); ++i) {
-                    --copy;
-                }
-            }
-            return copy;
+        revIterator operator+(int num) const {
+            return (*this) - num;
         }
 
-        revIterator operator-(long long num) const {
-            revIterator copy(*this);
-            return copy + (-num);
+        revIterator operator-(int num) const {
+            Iterator copy(*this);
+            if (num > 0) {
+                copy.pos = (revPos + num) % base;
+                copy.pointer_ += (revPos + num) / base;
+            } else if (num < 0) {
+                copy.pos = ((int(revPos) + num) % base + base) % base;
+                copy.pointer_ += ((int(revPos) + num) - int(base) + 1) / int(base);
+            }
+            return copy;
         }
 
         bool operator==(const revIterator<isconst>& other) const {
@@ -493,7 +459,7 @@ public:
         }
 
         long long operator-(const revIterator& other) const {
-            Iterator copy(*this);
+            revIterator copy(*this);
             long long num = 0;
             while (copy > other) {
                 ++num;
@@ -520,31 +486,30 @@ public:
     typedef revIterator<true> const_reverse_iterator;
 
     reverse_iterator rbegin(){
-        return reverse_iterator(&external[last - 1], (base + endd - 1) % base);
+        return reverse_iterator(&external[last - 1], (base + end_ - 1) % base);
     }
-    
+
     reverse_iterator rend(){
-        return reverse_iterator(&external[first], (base + beginn - 1) % base);
+        return reverse_iterator(&external[first], (base + begin_ - 1) % base);
     }
 
     const_reverse_iterator rbegin() const {
-        return const_reverse_iterator(const_cast<T**>(&external[last - 1], (base + endd - 1) % base));
+        return const_reverse_iterator(const_cast<T**>(&external[last - 1], (base + end_ - 1) % base));
     }
 
     const_reverse_iterator rend() const {
-        return const_reverse_iterator(const_cast<T**>(&external[first], (base + beginn - 1) % base));
+        return const_reverse_iterator(const_cast<T**>(&external[first], (base + begin_ - 1) % base));
     }
 
     const_reverse_iterator crbegin() const {
-        return const_reverse_iterator(const_cast<T**>(&external[last - 1], (base + endd - 1) % base));
+        return const_reverse_iterator(const_cast<T**>(&external[last - 1], (base + end_ - 1) % base));
     }
 
     const_reverse_iterator crend() const {
-        return const_reverse_iterator(const_cast<T**>(&external[first], (base + beginn - 1) % base));
+        return const_reverse_iterator(const_cast<T**>(&external[first], (base + begin_ - 1) % base));
     }
 
     void insert(iterator iter, const T& val) {
-        std::cerr << 8 << "\n";
         push_back(val);
         iterator pos = end() - 1;
         while (pos > iter) {
@@ -555,7 +520,6 @@ public:
     }
 
     void erase(iterator iter) {
-        std::cerr << 9 << "\n";
         iterator pos = iter;
         while (pos < end() - 1) {
             *pos = *(pos + 1);
@@ -565,19 +529,7 @@ public:
     }
 
     ~Deque() {
-        std::cerr << 10 << "\n";
-        for(size_t i = first; i < last; ++i) {
-            for(size_t j = 0; j < base; ++j) {
-                (external[i] + j)->~T();
-            }
-            delete[] reinterpret_cast<uint8_t*>(external[i]);
-        }
-        sizee = 0;
-        beginn = 0;
-        endd = 0;
-        first = 0;
-        last = 0;
-        external.clear();
+        delete_deque();
     }
 
 };
